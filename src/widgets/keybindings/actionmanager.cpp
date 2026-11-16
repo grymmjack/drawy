@@ -26,6 +26,7 @@
 #include "command/groupcommand.hpp"
 #include "command/insertitemcommand.hpp"
 #include "command/lockcommand.hpp"
+#include "command/pastestylecommand.hpp"
 #include "command/removeitemcommand.hpp"
 #include "command/selectcommand.hpp"
 #include "command/ungroupcommand.hpp"
@@ -80,6 +81,7 @@ ActionManager::ActionManager(KActionCollection *actionCollection, ApplicationCon
     KStandardActions::open(this, &ActionManager::openFile, actionCollection);
     KStandardActions::undo(this, &ActionManager::undo, actionCollection)->setEnabled(false); // disabled initially
     KStandardActions::redo(this, &ActionManager::redo, actionCollection)->setEnabled(false); // disabled initially
+    KStandardActions::cut(this, &ActionManager::cut, actionCollection);
     KStandardActions::copy(this, &ActionManager::copy, actionCollection);
     KStandardActions::paste(this, &ActionManager::paste, actionCollection);
     KStandardActions::zoomIn(this, &ActionManager::zoomIn, actionCollection)->setIcon(QIcon::fromTheme(u"value-increase"_s));
@@ -108,6 +110,18 @@ ActionManager::ActionManager(KActionCollection *actionCollection, ApplicationCon
     createAction(Action::DeleteSelection, i18nc("@action", "Delete"), {QKeySequence::Delete}, this, &ActionManager::deleteSelection)
         ->setIcon(QIcon::fromTheme(u"edit-delete"_s));
     createAction(Action::Clear, i18nc("@action", "Clear Canvas"), {}, this, &ActionManager::clear)->setIcon(QIcon::fromTheme(u"edit-delete"_s));
+    createAction(Action::CopyStyle,
+                 i18nc("@action", "Copy Style"),
+                 {QKeySequence(QKeyCombination(Qt::CTRL | Qt::SHIFT, Qt::Key_C))},
+                 this,
+                 &ActionManager::copyStyle)
+        ->setIcon(QIcon::fromTheme(u"color-picker"_s));
+    createAction(Action::PasteStyle,
+                 i18nc("@action", "Paste Style"),
+                 {QKeySequence(QKeyCombination(Qt::CTRL | Qt::SHIFT, Qt::Key_V))},
+                 this,
+                 &ActionManager::pasteStyle)
+        ->setIcon(QIcon::fromTheme(u"edit-paste-style"_s));
 
     createToolAction(Action::SwitchToFreeformTool,
                      i18nc("@action", "Freeform Tool"),
@@ -303,6 +317,10 @@ QString ActionManager::actionName(Action type) const
         return u"next_page"_s;
     case Action::PreviousPage:
         return u"previous_page"_s;
+    case Action::CopyStyle:
+        return u"copy_style"_s;
+    case Action::PasteStyle:
+        return u"paste_style"_s;
     }
     Q_UNREACHABLE();
     return u""_s;
@@ -385,6 +403,16 @@ void ActionManager::slotDebug()
     delete d;
 }
 
+void ActionManager::cut()
+{
+    if (m_context->selectionContext()->selectedItems().empty()) {
+        return;
+    }
+
+    copy();
+    deleteSelection();
+}
+
 void ActionManager::copy()
 {
     const auto &selectedItems{m_context->selectionContext()->selectedItems()};
@@ -439,6 +467,70 @@ void ActionManager::paste()
 
     m_context->renderingContext()->markForRender();
     m_context->renderingContext()->markForUpdate();
+}
+
+void ActionManager::copyStyle()
+{
+    const auto &selectedItems{m_context->selectionContext()->selectedItems()};
+    if (selectedItems.empty()) {
+        return;
+    }
+
+    // with several items selected, take the style of the topmost one
+    QList<std::shared_ptr<Item>> items{selectedItems.begin(), selectedItems.end()};
+    m_context->spatialContext()->quadtree().reorder(items);
+    const auto &source{items.constLast()};
+
+    QList<Property> style;
+    const auto types{source->propertyTypes()};
+    for (const auto type : types) {
+        if (!Property::isStyleProperty(type)) {
+            continue;
+        }
+
+        const Property property{source->property(type)};
+        // a group whose children differ holds one value per child id, which
+        // cannot be applied to other items
+        if (property.variant().typeId() == QMetaType::QVariantHash) {
+            continue;
+        }
+        style.append(property);
+    }
+
+    if (!style.isEmpty()) {
+        m_copiedStyle = std::move(style);
+    }
+}
+
+void ActionManager::pasteStyle()
+{
+    const auto &selectedItems{m_context->selectionContext()->selectedItems()};
+    if (m_copiedStyle.isEmpty() || selectedItems.empty()) {
+        return;
+    }
+
+    QList<std::shared_ptr<Item>> items;
+    for (const auto &item : selectedItems) {
+        if (!item->locked()) {
+            items.append(item);
+        }
+    }
+
+    const auto command{std::make_shared<PasteStyleCommand>(std::move(items), m_copiedStyle)};
+    if (!command->hasChanged()) {
+        return;
+    }
+    m_context->spatialContext()->commandHistory()->push(command);
+
+    // show the new values in the properties panel
+    m_context->uiContext()->propertyBar()->updateToolProperties();
+    m_context->renderingContext()->markForRender();
+    m_context->renderingContext()->markForUpdate();
+}
+
+bool ActionManager::hasCopiedStyle() const
+{
+    return !m_copiedStyle.isEmpty();
 }
 
 void ActionManager::zoomIn()

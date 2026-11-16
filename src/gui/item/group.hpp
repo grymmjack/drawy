@@ -24,6 +24,8 @@ public:
     void group(const QList<std::shared_ptr<Item>> &items);
     [[nodiscard]] QList<std::shared_ptr<Item>> unGroup();
 
+    void regenerateIds() override;
+
     void setProperty(const Property::Type propertyType, Property newObj) override;
     [[nodiscard]] Property property(const Property::Type propertyType) const override;
     [[nodiscard]] QList<Property> properties() const override;

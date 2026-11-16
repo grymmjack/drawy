@@ -236,10 +236,18 @@ void UIContext::showContextMenu() const
         }
     }
     if (hasSelection) {
+        menu->addAction(actionManager()->action(KStandardActions::Cut));
         menu->addAction(actionManager()->action(KStandardActions::Copy));
     }
 
     menu->addAction(actionManager()->action(KStandardActions::Paste));
+
+    if (hasSelection) {
+        menu->addAction(actionManager()->action(ActionManager::Action::CopyStyle));
+        if (actionManager()->hasCopiedStyle()) {
+            menu->addAction(actionManager()->action(ActionManager::Action::PasteStyle));
+        }
+    }
 
     if (hasSelection) {
         menu->addAction(actionManager()->action(ActionManager::Action::DeleteSelection));

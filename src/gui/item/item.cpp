@@ -12,7 +12,7 @@
 
 // PUBLIC
 Item::Item()
-    : m_id(QUuid::createUuid().toByteArray(QUuid::Id128))
+    : m_id(newUniqueId())
 {
 }
 
@@ -121,6 +121,16 @@ QByteArray Item::id() const
 void Item::setId(const QByteArray &newId)
 {
     m_id = newId;
+}
+
+void Item::regenerateIds()
+{
+    m_id = newUniqueId();
+}
+
+QByteArray Item::newUniqueId()
+{
+    return QUuid::createUuid().toByteArray(QUuid::Id128);
 }
 
 bool Item::locked() const
