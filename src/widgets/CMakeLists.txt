@@ -41,6 +41,8 @@ target_sources(
         command/updatepropertycommand.hpp
         command/alignitemcommand.hpp
         command/alignitemcommand.cpp
+        command/replaceitemscommand.cpp
+        command/replaceitemscommand.hpp
         command/lockcommand.hpp
         command/lockcommand.cpp
         command/zordercommand.hpp
