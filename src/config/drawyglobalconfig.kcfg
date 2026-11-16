@@ -95,6 +95,33 @@
       <default>#88C053</default>
     </entry>
   </group>
+  <group name="Grid">
+    <entry name="ShowGrid" type="Bool">
+      <default>false</default>
+    </entry>
+    <entry name="SnapToGrid" type="Bool">
+      <default>false</default>
+    </entry>
+    <entry name="GridSize" type="Int">
+      <label>Distance between grid lines, in canvas units</label>
+      <default>20</default>
+      <min>2</min>
+      <max>500</max>
+    </entry>
+    <entry name="GridMajorLineEvery" type="Int">
+      <label>Draw a stronger line every N grid cells (0 disables major lines)</label>
+      <default>5</default>
+      <min>0</min>
+      <max>50</max>
+    </entry>
+    <entry name="GridStyle" type="Enum">
+      <choices>
+        <choice name="Lines"/>
+        <choice name="Dots"/>
+      </choices>
+      <default>Lines</default>
+    </entry>
+  </group>
   <group name="Selection">
     <entry name="SelectionMode" type="Enum">
       <choices>

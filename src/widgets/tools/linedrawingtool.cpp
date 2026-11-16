@@ -10,6 +10,7 @@
 #include "command/commandhistory.hpp"
 #include "command/insertitemcommand.hpp"
 #include "command/selectcommand.hpp"
+#include "common/grid.hpp"
 #include "common/renderitems.hpp"
 #include "context/applicationcontext.hpp"
 #include "context/coordinatetransformer.hpp"
@@ -51,7 +52,7 @@ void LineDrawingTool::mousePressed(ApplicationContext *context)
             curItem->setProperty(Property::Type::BackgroundStyle, uiContext->propertyManager()->value(Property::Type::BackgroundStyle));
         }
 
-        curItem->initPoints(transformer.viewToWorld(uiContext->appEvent()->pos()));
+        curItem->initPoints(Common::Grid::snapWorldPoint(context, transformer.viewToWorld(uiContext->appEvent()->pos())));
 
         m_endSet = false;
         m_isDrawing = true;
@@ -74,7 +75,7 @@ void LineDrawingTool::mouseMoved(ApplicationContext *context)
             curItem->erase(painter, offsetPos);
         });
 
-        const QPointF newEnd{transformer.viewToWorld(uiContext->appEvent()->pos())};
+        const QPointF newEnd{Common::Grid::snapWorldPoint(context, transformer.viewToWorld(uiContext->appEvent()->pos()))};
 
         if (context->uiContext()->appEvent()->modifiers().testFlag(Qt::ShiftModifier)) {
             curItem->setEndWithShift(newEnd);

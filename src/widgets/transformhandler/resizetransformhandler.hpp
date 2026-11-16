@@ -57,10 +57,20 @@ private:
     [[nodiscard]] static std::optional<ResizeHandleType>
     handleAt(ApplicationContext *context, const QRectF selectionBox, const QTransform &selectionBoxTransform);
 
+    // the corner (or edge midpoint) of rect that the active handle drags
+    [[nodiscard]] QPointF draggedPoint(const QRectF rect) const;
+
 private:
     QPointF m_viewLastPoint{};
     QRectF m_initialSelectionBox{};
     QTransform m_initialSelectionTransform{};
+
+    // For grid snapping: the selection's geometry (without stroke padding) in the
+    // same local coordinates as m_initialSelectionBox, and the cursor position at
+    // press time. Empty when the selection is rotated, since an axis-aligned grid
+    // cannot be snapped to in a rotated frame.
+    QRectF m_initialGeometryBox{};
+    QPointF m_localPressPos{};
 
     QTransform m_lastTransformUpdate{};
     QTransform m_lastLockedTransformUpdate{};

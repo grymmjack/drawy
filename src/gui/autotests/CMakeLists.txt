@@ -48,6 +48,7 @@ endmacro()
 
 add_drawy_gui_unittest(propertytest.cpp)
 add_drawy_gui_unittest(itemutilstest.cpp)
+add_drawy_gui_unittest(snaptest.cpp)
 add_drawy_gui_unittest(arrowitemtest.cpp)
 add_drawy_gui_unittest(ellipseitemtest.cpp)
 add_drawy_gui_unittest(freeformitemtest.cpp)

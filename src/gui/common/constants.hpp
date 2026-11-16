@@ -52,6 +52,18 @@ inline constexpr qreal zoomInLimit{30}; // 100% * 30 = 3000% zoom
 inline constexpr qreal zoomMultiplier{1.1}; // it's standard practice to multiply/divide by 1.1 when zooming
 inline constexpr int zoomRenderWaitTime{250}; // milliseconds
 
+// Grid
+inline constexpr qreal gridMinLineSpacing{8.0}; // logical px; denser grids show only major lines
+inline constexpr qreal gridMinDotSpacing{12.0}; // logical px; dots need more room than lines to stay readable
+inline constexpr int gridMinorLineAlpha{28};
+inline constexpr int gridMajorLineAlpha{64};
+inline constexpr int gridMinorDotAlpha{90};
+inline constexpr int gridMajorDotAlpha{150};
+inline constexpr qreal gridDotSize{2.0}; // logical px
+inline constexpr qreal gridMajorDotSize{3.0}; // logical px
+inline constexpr qreal gridDarkBackgroundLightness{0.5}; // below this the grid is drawn in white instead of black
+inline constexpr int gridMaxCoarsening{8}; // how many times a too dense grid may be coarsened before giving up
+
 inline constexpr int pageSwitcherWidth{100}; // in px
 inline constexpr int pagesPopupWidth{250}; // in px
 inline constexpr int pagesPopupMaxHeight{320}; // in px

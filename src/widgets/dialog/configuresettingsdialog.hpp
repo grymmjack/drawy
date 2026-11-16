@@ -13,6 +13,7 @@ class ConfigureMiscWidget;
 class ConfigureUserFeedbackWidget;
 #endif
 class ConfigureInputWidget;
+class ConfigureGridWidget;
 namespace Sonnet
 {
 class ConfigWidget;
@@ -34,6 +35,8 @@ private:
     ConfigureGeneralWidget *const mConfigureGeneralWidget;
     ConfigureInputWidget *const mConfigureInputWidget;
     KPageWidgetItem *mConfigureInputWidgetPage = nullptr;
+    ConfigureGridWidget *const mConfigureGridWidget;
+    KPageWidgetItem *mConfigureGridWidgetPage = nullptr;
     Sonnet::ConfigWidget *const mSonnetConfigWidget;
     KPageWidgetItem *mSonnetConfigWidgetPage = nullptr;
     KPageWidgetItem *mConfigureGeneralWidgetPage = nullptr;
