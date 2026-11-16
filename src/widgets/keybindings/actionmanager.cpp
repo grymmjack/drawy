@@ -16,6 +16,8 @@
 #include <QFileDialog>
 #include <QJsonDocument>
 #include <QMimeData>
+#include <QProgressDialog>
+#include <QThread>
 #include <QXmlStreamWriter>
 #include <memory>
 #include <utility>
@@ -27,6 +29,7 @@
 #include "command/insertitemcommand.hpp"
 #include "command/lockcommand.hpp"
 #include "command/removeitemcommand.hpp"
+#include "command/replaceitemscommand.hpp"
 #include "command/selectcommand.hpp"
 #include "command/ungroupcommand.hpp"
 #include "command/zordercommand.hpp"
@@ -34,9 +37,16 @@
 #include "customelements/customelementsmanager.hpp"
 #include "dialog/configuresettingsdialog.hpp"
 #include "event/event.hpp"
+#include "handwriting/handwritingrecognition.hpp"
+#if HAVE_ONNXRUNTIME
+#include "handwriting/handwritingmodeldownload.hpp"
+#endif
+#include "item/freeform.hpp"
+#include "item/text.hpp"
 #include "jobs/serializejob.hpp"
 #include "keybindmanager.hpp"
 #include "page/page.hpp"
+#include "properties/widgets/propertymanager.hpp"
 
 #include "canvas/canvas.hpp"
 #include "components/propertybar.hpp"
@@ -108,6 +118,10 @@ ActionManager::ActionManager(KActionCollection *actionCollection, ApplicationCon
     createAction(Action::DeleteSelection, i18nc("@action", "Delete"), {QKeySequence::Delete}, this, &ActionManager::deleteSelection)
         ->setIcon(QIcon::fromTheme(u"edit-delete"_s));
     createAction(Action::Clear, i18nc("@action", "Clear Canvas"), {}, this, &ActionManager::clear)->setIcon(QIcon::fromTheme(u"edit-delete"_s));
+#if HAVE_ONNXRUNTIME
+    createAction(Action::ConvertHandwritingToText, i18nc("@action", "Convert Handwriting to Text"), {}, this, &ActionManager::convertHandwritingToText)
+        ->setIcon(QIcon::fromTheme(u"draw-text"_s));
+#endif
 
     createToolAction(Action::SwitchToFreeformTool,
                      i18nc("@action", "Freeform Tool"),
@@ -303,6 +317,8 @@ QString ActionManager::actionName(Action type) const
         return u"next_page"_s;
     case Action::PreviousPage:
         return u"previous_page"_s;
+    case Action::ConvertHandwritingToText:
+        return u"convert_handwriting_to_text"_s;
     }
     Q_UNREACHABLE();
     return u""_s;
@@ -436,6 +452,149 @@ void ActionManager::paste()
     m_context->spatialContext()->commandHistory()->push(std::make_shared<InsertItemCommand>(items));
 
     m_context->selectionContext()->setSelectedItems(items.begin(), items.end());
+
+    m_context->renderingContext()->markForRender();
+    m_context->renderingContext()->markForUpdate();
+}
+
+void ActionManager::convertHandwritingToText()
+{
+#if HAVE_ONNXRUNTIME
+    if (m_recognizingHandwriting) {
+        return;
+    }
+
+    QList<std::shared_ptr<FreeformItem>> strokes;
+    for (const auto &item : m_context->selectionContext()->selectedItems()) {
+        if (item->formType() == Item::FormType::Freeform && !item->locked()) {
+            strokes.append(std::static_pointer_cast<FreeformItem>(item));
+        }
+    }
+    if (strokes.isEmpty()) {
+        return;
+    }
+
+    const QString modelPath{HandwritingRecognition::installedModelPath()};
+    if (modelPath.isEmpty()) {
+        downloadHandwritingModel();
+        return;
+    }
+
+    const HandwritingRecognition::StrokeLines strokeLines{HandwritingRecognition::renderLines(strokes)};
+
+    // Recognition takes a moment, so it runs on its own thread. The thread only
+    // sees copies of its input; the result is applied back here, and only if
+    // the strokes are still on the canvas by then.
+    m_recognizingHandwriting = true;
+    QApplication::setOverrideCursor(Qt::BusyCursor);
+
+    const auto result{std::make_shared<HandwritingRecognition::Recognition>()};
+    QThread *thread{QThread::create([lines = strokeLines.lines, modelPath, result] {
+        *result = HandwritingRecognition::recognize(lines, modelPath);
+    })};
+    connect(thread, &QThread::finished, thread, &QObject::deleteLater);
+    connect(thread, &QThread::finished, this, [this, result, strokes, bounds = strokeLines.worldBounds] {
+        QApplication::restoreOverrideCursor();
+        m_recognizingHandwriting = false;
+        replaceHandwriting(strokes, bounds, *result);
+    });
+    thread->start();
+#endif
+}
+
+void ActionManager::downloadHandwritingModel()
+{
+#if HAVE_ONNXRUNTIME
+    QWidget *const parent{m_context->parentWidget()};
+    const auto &model{HandwritingRecognition::model()};
+    const auto answer{KMessageBox::questionTwoActions(
+        parent,
+        i18n("Converting handwriting to text needs a text recognition model (PaddleOCR, %1), which is downloaded once from %2. Download it now?",
+             QLocale{}.formattedDataSize(model.size),
+             model.url.host()),
+        i18nc("@title:window", "Download Text Recognition Model"),
+        KGuiItem{i18nc("@action:button", "Download"), u"download"_s},
+        KStandardGuiItem::cancel())};
+    if (answer != KMessageBox::PrimaryAction) {
+        return;
+    }
+
+    auto *const download{new HandwritingModelDownload(this)};
+    auto *const progress{new QProgressDialog(i18n("Downloading the text recognition model…"), i18nc("@action:button", "Cancel"), 0, 0, parent)};
+    progress->setWindowTitle(i18nc("@title:window", "Download Text Recognition Model"));
+    progress->setWindowModality(Qt::WindowModal);
+    progress->setMinimumDuration(0);
+    progress->setAutoClose(false);
+    progress->setAutoReset(false);
+
+    connect(download, &HandwritingModelDownload::progress, progress, [progress](qint64 received, qint64 total) {
+        // in kilobytes, so the sizes fit in an int
+        progress->setMaximum(static_cast<int>(total / 1024));
+        progress->setValue(static_cast<int>(received / 1024));
+    });
+    connect(progress, &QProgressDialog::canceled, download, &HandwritingModelDownload::cancel);
+    connect(download, &HandwritingModelDownload::finished, this, [this, download, progress, parent](bool success, const QString &error) {
+        progress->deleteLater();
+        download->deleteLater();
+        if (success) {
+            convertHandwritingToText();
+        } else if (!error.isEmpty()) {
+            KMessageBox::error(parent, i18n("The text recognition model could not be downloaded: %1", error));
+        }
+    });
+    progress->show();
+    download->start();
+#endif
+}
+
+void ActionManager::replaceHandwriting(const QList<std::shared_ptr<FreeformItem>> &strokes,
+                                       const QRectF &worldBounds,
+                                       const HandwritingRecognition::Recognition &recognition)
+{
+    QWidget *const parent{m_context->parentWidget()};
+    if (!recognition.error.isEmpty()) {
+        KMessageBox::error(parent, i18n("Handwriting recognition failed: %1", recognition.error));
+        return;
+    }
+    if (recognition.text.isEmpty()) {
+        KMessageBox::information(parent, i18n("No text was recognized in the selected handwriting."));
+        return;
+    }
+
+    // the strokes may have been erased, or the page changed, while recognition ran
+    const auto itemsOnCanvas{m_context->spatialContext()->quadtree().getAllItems()};
+    const bool strokesStillThere{std::ranges::all_of(strokes, [&itemsOnCanvas](const std::shared_ptr<FreeformItem> &stroke) {
+        return itemsOnCanvas.contains(stroke);
+    })};
+    if (!strokesStillThere) {
+        return;
+    }
+
+    auto *const propertyManager{m_context->uiContext()->propertyManager()};
+    const auto text{std::make_shared<TextItem>()};
+    // the ink's colour, and the font the text tool is set to
+    text->setProperty(Property::Type::StrokeColor, strokes.constFirst()->property(Property::Type::StrokeColor));
+    text->setProperty(Property::Type::FontFamily, propertyManager->value(Property::Type::FontFamily));
+    text->setProperty(Property::Type::FontStyle, propertyManager->value(Property::Type::FontStyle));
+    text->setProperty(Property::Type::TextAlignment, propertyManager->value(Property::Type::TextAlignment));
+    text->createTextBox(worldBounds.topLeft());
+    text->cursor().insertText(recognition.text);
+
+    // match the handwriting's size: scale the font so the text is as tall as the writing
+    const qreal textHeight{text->boundingBox().height()};
+    if (textHeight > 0) {
+        const qreal currentSize{text->property(Property::Type::FontSize).value<qreal>()};
+        const int matchedSize{std::clamp(static_cast<int>(std::lround(currentSize * worldBounds.height() / textHeight)),
+                                         Common::handwritingMinFontSize,
+                                         Common::handwritingMaxFontSize)};
+        text->setProperty(Property::Type::FontSize, Property{matchedSize, Property::Type::FontSize});
+    }
+    text->setBoundingBoxTopLeft(worldBounds.topLeft());
+
+    const QList<std::shared_ptr<Item>> oldItems{strokes.begin(), strokes.end()};
+    const QList<std::shared_ptr<Item>> newItems{text};
+    m_context->spatialContext()->commandHistory()->push(std::make_shared<ReplaceItemsCommand>(oldItems, newItems, i18n("Convert Handwriting to Text")));
+    m_context->selectionContext()->setSelectedItems(newItems.begin(), newItems.end());
 
     m_context->renderingContext()->markForRender();
     m_context->renderingContext()->markForUpdate();

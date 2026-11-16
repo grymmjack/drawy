@@ -75,4 +75,19 @@ inline constexpr int selectionCursorHitSize{10}; // in px, the size for detectin
 inline const QString configSession{u"Session"_s};
 inline const QString configSessionLastSavedFile{u"LastSavedFile"_s};
 inline const QString configSessionLastSavedFileModified{u"LastSavedFileModified"_s};
+// Handwriting recognition: each line of strokes is rendered with letters about
+// handwritingLetterHeight pixels tall and an even pen, then scaled to the
+// model's input height.
+inline constexpr qreal handwritingLetterHeight{40.0};
+inline constexpr qreal handwritingPenWidth{4.0};
+inline constexpr int handwritingImagePadding{24};
+inline constexpr int handwritingMaxImageSide{6000};
+inline constexpr qreal handwritingMinScale{0.1};
+inline constexpr qreal handwritingMaxScale{10.0};
+// the recognition model reads images this tall, and at least this wide
+inline constexpr int handwritingModelInputHeight{48};
+inline constexpr int handwritingModelMinInputWidth{320};
+// font size limits when matching converted text to the handwriting's size
+inline constexpr int handwritingMinFontSize{6};
+inline constexpr int handwritingMaxFontSize{400};
 } // namespace Common

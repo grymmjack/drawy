@@ -5,6 +5,7 @@
 #pragma once
 
 #include "config-drawy.hpp"
+#include "handwriting/handwritingrecognition.hpp"
 #include "item/itemutils.hpp"
 #include "jobs/loadjob.hpp"
 #include "tools/tool.hpp"
@@ -19,6 +20,7 @@
 class KActionCollection;
 
 class ApplicationContext;
+class FreeformItem;
 class ActionManager : public QObject
 {
     Q_OBJECT
@@ -61,6 +63,7 @@ public:
         DeletePage,
         NextPage,
         PreviousPage,
+        ConvertHandwritingToText,
     };
 
     Q_ENUM(Action)
@@ -92,6 +95,10 @@ private:
     void redo();
     void copy();
     void paste();
+    void convertHandwritingToText();
+    void downloadHandwritingModel();
+    void
+    replaceHandwriting(const QList<std::shared_ptr<FreeformItem>> &strokes, const QRectF &worldBounds, const HandwritingRecognition::Recognition &recognition);
     void switchToMoveTool();
     void selectAll();
     void deleteSelection();
@@ -162,4 +169,7 @@ private:
     ApplicationContext *const m_context;
     KActionCollection *const m_actionCollection;
     KRecentFilesAction *const m_recentFiles;
+
+    // a handwriting recognition is running; only one at a time
+    bool m_recognizingHandwriting{false};
 };

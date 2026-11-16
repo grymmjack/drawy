@@ -12,6 +12,7 @@
 
 #include "item/item.hpp"
 #include "item/itemutils.hpp"
+#include "libdrawywidgets_private_export.h"
 #include "orderedlist.hpp"
 
 /*
@@ -24,7 +25,7 @@
  * NOTE: This is tightly coupled with the OrderedList data structure present in
  * the same directory and the Item class present in the `item` directory.
  */
-class QuadTree
+class LIBDRAWYWIDGETS_TESTS_EXPORT QuadTree
 {
 public:
     using ItemPtr = std::shared_ptr<Item>;

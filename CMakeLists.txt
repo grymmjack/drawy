@@ -197,6 +197,20 @@ endif()
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(ZSTD REQUIRED libzstd)
 
+# ONNX Runtime for turning handwriting into text (optional)
+find_package(onnxruntime CONFIG QUIET)
+if(TARGET onnxruntime::onnxruntime)
+    set(HAVE_ONNXRUNTIME TRUE)
+else()
+    pkg_check_modules(ONNXRUNTIME IMPORTED_TARGET libonnxruntime)
+    set(HAVE_ONNXRUNTIME ${ONNXRUNTIME_FOUND})
+endif()
+add_feature_info(ONNXRuntime HAVE_ONNXRUNTIME "Convert handwriting to text")
+if(HAVE_ONNXRUNTIME)
+    # to download the recognition model
+    find_package(Qt6 ${QT_REQUIRED_VERSION} REQUIRED COMPONENTS Network)
+endif()
+
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     # Not setting for GNU due to too many warnings related to private members of base classes or around lambdas
     # see e.g. https://gcc.gnu.org/bugzilla/show_bug.cgi?id=56556 or https://gcc.gnu.org/bugzilla/show_bug.cgi?id=79328

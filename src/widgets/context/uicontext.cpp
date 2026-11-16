@@ -14,6 +14,7 @@
 #include "components/toolbar.hpp"
 #include "components/topleftwidgets.hpp"
 #include "components/topwidgets.hpp"
+#include "config-drawy.hpp"
 #include "coordinatetransformer.hpp"
 #include "customelements/customelementsmanager.hpp"
 #include "data-structures/cachegrid.hpp"
@@ -244,6 +245,15 @@ void UIContext::showContextMenu() const
     if (hasSelection) {
         menu->addAction(actionManager()->action(ActionManager::Action::DeleteSelection));
     }
+
+#if HAVE_ONNXRUNTIME
+    const bool hasHandwriting{std::ranges::any_of(selectedItems, [](const std::shared_ptr<Item> &item) {
+        return item->formType() == Item::FormType::Freeform && !item->locked();
+    })};
+    if (hasHandwriting) {
+        menu->addAction(actionManager()->action(ActionManager::Action::ConvertHandwritingToText));
+    }
+#endif
 
     // only show option to select all if everything is not selected
     if (hasItems && allItems.size() != static_cast<qsizetype>(selectedItems.size())) {
