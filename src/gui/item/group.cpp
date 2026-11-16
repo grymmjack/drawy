@@ -115,6 +115,14 @@ Item::FormType GroupItem::formType() const
     return Item::FormType::Group;
 }
 
+void GroupItem::regenerateIds()
+{
+    Item::regenerateIds();
+    for (const auto &item : std::as_const(m_items)) {
+        item->regenerateIds();
+    }
+}
+
 void GroupItem::setProperty(const Property::Type propertyType, Property newObj)
 {
     if (newObj.variant().typeId() == QMetaType::QVariantHash) {

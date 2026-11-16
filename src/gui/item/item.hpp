@@ -100,6 +100,10 @@ public:
 
     [[nodiscard]] QByteArray id() const;
     void setId(const QByteArray &newId);
+    // gives the item (and, for groups, its children) new unique ids, e.g. for a
+    // pasted copy that must not share ids with the original
+    virtual void regenerateIds();
+    [[nodiscard]] static QByteArray newUniqueId();
 
     [[nodiscard]] bool locked() const;
     void setLocked(bool newLocked);

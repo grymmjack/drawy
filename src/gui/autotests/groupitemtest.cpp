@@ -223,6 +223,27 @@ void GroupItemTest::shouldTestProperties()
     QCOMPARE(i.allPropertyTypes().count(), r1->allPropertyTypes().count());
 }
 
+void GroupItemTest::shouldRegenerateIdsOfGroupAndChildren()
+{
+    GroupItem group;
+    const std::shared_ptr<RectangleItem> r1 = std::make_shared<RectangleItem>();
+    const std::shared_ptr<RectangleItem> r2 = std::make_shared<RectangleItem>();
+    group.group({r1, r2});
+
+    const QByteArray groupId{group.id()};
+    const QByteArray r1Id{r1->id()};
+    const QByteArray r2Id{r2->id()};
+
+    group.regenerateIds();
+
+    // a pasted copy must not share any id with the original
+    QVERIFY(group.id() != groupId);
+    QVERIFY(r1->id() != r1Id);
+    QVERIFY(r2->id() != r2Id);
+    QVERIFY(r1->id() != r2->id());
+    QVERIFY(!group.id().isEmpty());
+}
+
 void GroupItemTest::shouldTestNeedsCaching()
 {
     GroupItem i;

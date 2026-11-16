@@ -26,6 +26,11 @@ QList<std::shared_ptr<Item>> DrawyMimeHandler::tryReadData(const QMimeData &mime
     }
 
     const QList<std::shared_ptr<Item>> items = DeserializeUtils::deserializeItems(data.array());
+
+    // the same data can be pasted many times, and every copy must be a distinct item
+    for (const auto &item : items) {
+        item->regenerateIds();
+    }
     return items;
 }
 

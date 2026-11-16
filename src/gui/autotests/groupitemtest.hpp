@@ -26,6 +26,7 @@ private Q_SLOTS:
     void shouldTestIntersects();
     void shouldTestBoundingBox();
     void shouldTestProperties();
+    void shouldRegenerateIdsOfGroupAndChildren();
     void shouldTestNeedsCaching();
     void shouldTestLockAspectRatioWhenResizing();
 };
