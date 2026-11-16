@@ -4,7 +4,7 @@
 
 id: org.kde.drawy
 runtime: org.kde.Platform
-runtime-version: '6.10'
+runtime-version: '6.11'
 sdk: org.kde.Sdk
 command: drawy
 rename-icon: drawy
@@ -19,10 +19,18 @@ finish-args:
     # show a window
   - --socket=fallback-x11
   - --socket=wayland
+    # download the handwriting recognition model on first use
+  - --share=network
+    # follow the desktop's theme and global menu, as the Flathub build does
+  - --filesystem=xdg-config/kdeglobals:ro
+  - --talk-name=com.canonical.AppMenu.Registrar
+  - --talk-name=org.kde.kconfig.notify
+  - --talk-name=org.kde.KGlobalSettings
 
 cleanup:
   - /include
   - /lib/pkgconfig
+  - /lib/cmake
   - /share/man
   - /share/qlogging-categories6
   - '*.pc'
@@ -30,11 +38,30 @@ cleanup:
   - '*.la'
 
 modules:
+    # for handwriting to text; Microsoft's prebuilt CPU release
+  - name: onnxruntime
+    buildsystem: simple
+    # the archive's CMake and pkg-config files expect lib64/ and include/onnxruntime/,
+    # which the archive itself does not use: install the headers there, keep the
+    # libraries in /app/lib (on the library path) and point the configs at them
+    build-commands:
+      - mkdir -p /app/lib /app/include/onnxruntime
+      - cp -a lib/. /app/lib/
+      - cp -a include/. /app/include/onnxruntime/
+      - sed -i 's|/lib64/|/lib/|' /app/lib/cmake/onnxruntime/onnxruntimeTargets-release.cmake
+      - sed -i -e 's|^prefix=.*|prefix=/app|' -e 's|lib64|lib|' /app/lib/pkgconfig/libonnxruntime.pc
+    sources:
+      - type: archive
+        url: https://github.com/microsoft/onnxruntime/releases/download/v1.31.1/onnxruntime-linux-x64-1.31.1.tgz
+        sha256: c849e36a1ef3e22d4ff217b9d1ce4a3cf5b9467b975610913ae959ad5b16bdc9
+
   - name: drawy
     config-opts:
       - -DCMAKE_BUILD_TYPE=RelWithDebInfo
       - -DBUILD_TESTING=OFF
     buildsystem: cmake-ninja
     sources:
-      - type: dir
+        # the committed `mine` branch, not the working folder (which holds build dirs)
+      - type: git
         path: '.'
+        branch: mine
