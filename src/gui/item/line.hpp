@@ -26,6 +26,8 @@ public:
     [[nodiscard]] const QPointF &start() const;
     [[nodiscard]] const QPointF &end() const;
 
+    [[nodiscard]] QRectF normalizedGeometryBox() const override;
+
     [[nodiscard]] bool intersects(const QRectF &rect) override;
 
     [[nodiscard]] Item::FormType formType() const override;

@@ -5,15 +5,19 @@
 #include "bottomleftwidgets.hpp"
 #include "common/constants.hpp"
 #include "context/uicontext.hpp"
+#include "drawyglobalconfig.h"
 #include "frame.hpp"
 #include "keybindings/actionmanager.hpp"
 #include "page/pagemanager.hpp"
 #include "page/pagemodel.hpp"
 #include "page/pageswidget.hpp"
 #include <KLocalizedString>
+#include <QMenu>
+#include <QSpinBox>
 #include <QStyle>
 #include <QToolButton>
 #include <QVBoxLayout>
+#include <QWidgetAction>
 
 using namespace Qt::Literals::StringLiterals;
 BottomLeftWidgets::BottomLeftWidgets(ActionManager *actionManager, PageManager *pageManager, QWidget *parent)
@@ -118,9 +122,59 @@ BottomLeftWidgets::BottomLeftWidgets(ActionManager *actionManager, PageManager *
 
     updatePageButton();
 
+    // Grid controls
+    auto gridControlFrame{new Frame{this}};
+    auto gridControlLayout{new QHBoxLayout{gridControlFrame}};
+
+    auto showGridButton{new QToolButton{gridControlFrame}};
+    showGridButton->setObjectName(u"showGridButton"_s);
+    showGridButton->setAutoRaise(true);
+    showGridButton->setIconSize(iconSize);
+    showGridButton->setDefaultAction(actionManager->action(ActionManager::Action::ShowGrid));
+
+    auto snapToGridButton{new QToolButton{gridControlFrame}};
+    snapToGridButton->setObjectName(u"snapToGridButton"_s);
+    snapToGridButton->setAutoRaise(true);
+    snapToGridButton->setIconSize(iconSize);
+    snapToGridButton->setDefaultAction(actionManager->action(ActionManager::Action::SnapToGrid));
+
+    // grid size popup
+    auto gridSizeButton{new QToolButton{gridControlFrame}};
+    gridSizeButton->setObjectName(u"gridSizeButton"_s);
+    gridSizeButton->setAutoRaise(true);
+    gridSizeButton->setIconSize(iconSize);
+    gridSizeButton->setIcon(QIcon::fromTheme(u"grid-rectangular"_s));
+    gridSizeButton->setToolTip(i18nc("@info:tooltip", "Grid Size"));
+    gridSizeButton->setPopupMode(QToolButton::InstantPopup);
+
+    auto gridSizeMenu{new QMenu{gridSizeButton}};
+    auto gridSizeSpinBox{new QSpinBox{gridSizeMenu}};
+    gridSizeSpinBox->setObjectName(u"gridSizeSpinBox"_s);
+    gridSizeSpinBox->setRange(DrawyGlobalConfig::self()->gridSizeItem()->minValue().toInt(), DrawyGlobalConfig::self()->gridSizeItem()->maxValue().toInt());
+    gridSizeSpinBox->setPrefix(i18nc("@label:spinbox prefix, followed by the grid size", "Grid size: "));
+    gridSizeSpinBox->setSuffix(i18nc("@label:spinbox unit suffix for the grid size", " px"));
+    auto gridSizeAction{new QWidgetAction{gridSizeMenu}};
+    gridSizeAction->setDefaultWidget(gridSizeSpinBox);
+    gridSizeMenu->addAction(gridSizeAction);
+    gridSizeButton->setMenu(gridSizeMenu);
+
+    connect(gridSizeMenu, &QMenu::aboutToShow, gridSizeSpinBox, [gridSizeSpinBox]() {
+        // the size may have been changed in the settings dialog
+        gridSizeSpinBox->setValue(DrawyGlobalConfig::self()->gridSize());
+    });
+    connect(gridSizeSpinBox, &QSpinBox::valueChanged, this, [actionManager](int size) {
+        actionManager->setGridSize(size);
+    });
+
+    gridControlLayout->setSpacing(0);
+    gridControlLayout->addWidget(showGridButton);
+    gridControlLayout->addWidget(snapToGridButton);
+    gridControlLayout->addWidget(gridSizeButton);
+
     m_layout->setSpacing(10);
     m_layout->addWidget(zoomControlFrame, 0, Qt::AlignLeft);
     m_layout->addWidget(pageControlFrame, 0, Qt::AlignLeft);
+    m_layout->addWidget(gridControlFrame, 0, Qt::AlignLeft);
 }
 
 void BottomLeftWidgets::updatePageButton()

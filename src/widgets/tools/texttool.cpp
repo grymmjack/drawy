@@ -10,6 +10,7 @@
 #include "canvas/canvas.hpp"
 #include "command/commandhistory.hpp"
 #include "command/insertitemcommand.hpp"
+#include "common/grid.hpp"
 #include "components/propertybar.hpp"
 #include "components/toolbar.hpp"
 #include "context/applicationcontext.hpp"
@@ -76,7 +77,7 @@ void TextTool::mousePressed(ApplicationContext *context)
                 m_curItem->setProperty(Property::Type::TextAlignment, uiContext->propertyManager()->value(Property::Type::TextAlignment));
                 m_curItem->setProperty(Property::Type::ListStyle, uiContext->propertyManager()->value(Property::Type::ListStyle));
 
-                m_curItem->createTextBox(transformer.viewToWorld(uiContext->appEvent()->pos()));
+                m_curItem->createTextBox(Common::Grid::snapWorldPoint(context, transformer.viewToWorld(uiContext->appEvent()->pos())));
 
                 auto commandHistory{spatialContext->commandHistory()};
                 commandHistory->push(std::make_shared<InsertItemCommand>(QList<std::shared_ptr<Item>>{m_curItem}));

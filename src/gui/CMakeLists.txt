@@ -140,6 +140,8 @@ target_sources(
         common/utils/freehand.hpp
         common/utils/math.cpp
         common/utils/math.hpp
+        common/utils/snap.cpp
+        common/utils/snap.hpp
         customelements/customelementsmanager.hpp
         customelements/customelementsmanager.cpp
         customelements/customelement.hpp

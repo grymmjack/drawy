@@ -6,6 +6,7 @@
 #include "imagetool.hpp"
 #include "command/commandhistory.hpp"
 #include "command/insertitemcommand.hpp"
+#include "common/grid.hpp"
 #include "components/toolbar.hpp"
 #include "context/applicationcontext.hpp"
 #include "context/coordinatetransformer.hpp"
@@ -70,7 +71,7 @@ void ImageTool::mouseReleased(ApplicationContext *context)
 
         curItem->setProperty(Property::Type::Opacity, uiContext->propertyManager()->value(Property::Type::Opacity));
         curItem->setPixmap(std::move(pixmap));
-        curItem->setBox(QRectF(transformer.viewToWorld(lastPoint), transformer.viewToWorld(curItem->pastedSize())));
+        curItem->setBox(QRectF(Common::Grid::snapWorldPoint(context, transformer.viewToWorld(lastPoint)), transformer.viewToWorld(curItem->pastedSize())));
 
         QList<std::shared_ptr<Item>> lst{curItem};
         commandHistory->push(std::make_shared<InsertItemCommand>(std::move(lst)));

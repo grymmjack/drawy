@@ -31,6 +31,16 @@ QRectF Item::normalizedBoundingBox() const
     return m_boundingBox.normalized();
 }
 
+QRectF Item::normalizedGeometryBox() const
+{
+    return normalizedBoundingBox();
+}
+
+QRectF Item::geometryBoundingBox() const
+{
+    return m_transform.map(normalizedGeometryBox()).boundingRect();
+}
+
 QPolygonF Item::displayBoundingBox() const
 {
     return m_transform.map(m_boundingBox.normalized());

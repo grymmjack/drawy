@@ -17,7 +17,10 @@ public:
     [[nodiscard]] TransformHandler::State mouseReleased(ApplicationContext *context) override;
 
 private:
-    QPointF m_lastPos{};
     QPointF m_initialPos{};
+    // world point that lands on the grid when snapping (top left of the selection's geometry)
+    QPointF m_snapAnchor{};
+    // world translation applied to the selection so far during this drag
+    QPointF m_appliedDelta{};
     bool m_isActive{false};
 };
