@@ -7,6 +7,7 @@
 #include "command/commandhistory.hpp"
 #include "command/lineresizeitemcommand.hpp"
 #include "common/constants.hpp"
+#include "common/grid.hpp"
 #include "context/applicationcontext.hpp"
 #include "context/coordinatetransformer.hpp"
 #include "context/renderingcontext.hpp"
@@ -121,7 +122,7 @@ TransformHandler::State LineResizeTransformHandler::mouseMoved(ApplicationContex
         auto &quadtree{context->spatialContext()->quadtree()};
         auto &transformer{context->spatialContext()->coordinateTransformer()};
 
-        const auto relativeCurPos{item->transformObj().inverted().map(worldPos)};
+        const auto relativeCurPos{item->transformObj().inverted().map(Common::Grid::snapWorldPoint(context, worldPos))};
 
         QRectF dirtyRegion{item->boundingBox()};
         quadtree.deleteItem(item);

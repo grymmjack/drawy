@@ -6,6 +6,7 @@
 
 #include "configuresettingsdialog.hpp"
 #include "general/configuregeneralwidget.hpp"
+#include "grid/configuregridwidget.hpp"
 #include "input/configureinputwidget.hpp"
 #include "misc/configuremiscwidget.hpp"
 #include <KConfigGroup>
@@ -28,6 +29,7 @@ ConfigureSettingsDialog::ConfigureSettingsDialog(QWidget *parent)
     : KPageDialog(parent)
     , mConfigureGeneralWidget(new ConfigureGeneralWidget(this))
     , mConfigureInputWidget(new ConfigureInputWidget(this))
+    , mConfigureGridWidget(new ConfigureGridWidget(this))
     , mSonnetConfigWidget(new Sonnet::ConfigWidget(this))
 #if WITH_DBUS
     , mConfigureMiscWidget(new ConfigureMiscWidget(this))
@@ -48,6 +50,11 @@ ConfigureSettingsDialog::ConfigureSettingsDialog(QWidget *parent)
     mConfigureInputWidgetPage = new KPageWidgetItem(mConfigureInputWidget, inputPageName);
     mConfigureInputWidgetPage->setIcon(QIcon::fromTheme(u"dialog-input-devices-symbolic"_s));
     addPage(mConfigureInputWidgetPage);
+
+    const QString gridPageName = i18n("Grid");
+    mConfigureGridWidgetPage = new KPageWidgetItem(mConfigureGridWidget, gridPageName);
+    mConfigureGridWidgetPage->setIcon(QIcon::fromTheme(u"show-grid"_s));
+    addPage(mConfigureGridWidgetPage);
 
     const QString spellCheckPageName = i18n("Spell Checking");
     mSonnetConfigWidgetPage = new KPageWidgetItem(mSonnetConfigWidget, spellCheckPageName);
@@ -100,6 +107,7 @@ void ConfigureSettingsDialog::slotAccepted()
     mSonnetConfigWidget->save();
     mConfigureGeneralWidget->save();
     mConfigureInputWidget->save();
+    mConfigureGridWidget->save();
 #if WITH_DBUS
     mConfigureMiscWidget->save();
 #endif
@@ -112,6 +120,7 @@ void ConfigureSettingsDialog::load()
 {
     mConfigureGeneralWidget->load();
     mConfigureInputWidget->load();
+    mConfigureGridWidget->load();
 #if WITH_DBUS
     mConfigureMiscWidget->load();
 #endif
@@ -124,6 +133,7 @@ void ConfigureSettingsDialog::slotRestoreDefaults()
 {
     mConfigureGeneralWidget->restoreToDefaults();
     mConfigureInputWidget->restoreToDefaults();
+    mConfigureGridWidget->restoreToDefaults();
     mSonnetConfigWidget->slotDefault();
 #if WITH_DBUS
     mConfigureMiscWidget->restoreToDefaults();

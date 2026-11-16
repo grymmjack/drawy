@@ -9,6 +9,8 @@
 #include "command/moveitemcommand.hpp"
 #include "command/selectcommand.hpp"
 #include "common/constants.hpp"
+#include "common/grid.hpp"
+#include "common/utils/snap.hpp"
 #include "context/applicationcontext.hpp"
 #include "context/coordinatetransformer.hpp"
 #include "context/renderingcontext.hpp"
@@ -74,9 +76,17 @@ TransformHandler::State MoveTransformHandler::mousePressed(ApplicationContext *c
 
         renderingContext->canvas()->setCursor(Qt::ArrowCursor);
 
-        m_lastPos = uiContext->appEvent()->pos();
-        m_initialPos = m_lastPos;
+        m_initialPos = uiContext->appEvent()->pos();
+        m_appliedDelta = {};
         m_isActive = true;
+
+        QRectF geometry;
+        for (const auto &item : context->selectionContext()->selectedItems()) {
+            if (!item->locked()) {
+                geometry |= item->geometryBoundingBox();
+            }
+        }
+        m_snapAnchor = geometry.topLeft();
     }
 
     return TransformHandler::State::Locked;
@@ -98,17 +108,21 @@ TransformHandler::State MoveTransformHandler::mouseMoved(ApplicationContext *con
     const auto &selectedItems{selectionContext->selectedItems()};
 
     const QPointF curPos{context->uiContext()->appEvent()->pos()};
+    const QPointF rawDelta{transformer.viewToWorld(curPos) - transformer.viewToWorld(m_initialPos)};
 
-    const QPointF worldCurPos{transformer.viewToWorld(curPos)};
-    const QPointF worldLastPos{transformer.viewToWorld(m_lastPos)};
+    // The total delta is recomputed from the press position each time so that
+    // the snapped position does not drift as small cursor movements accumulate.
+    const QPointF totalDelta{Common::Grid::isSnapActive(context) ? Common::Utils::Snap::snapDelta(m_snapAnchor, rawDelta, Common::Grid::size()) : rawDelta};
+    const QPointF stepDelta{totalDelta - m_appliedDelta};
+    if (stepDelta.isNull()) {
+        return TransformHandler::State::Locked;
+    }
 
     QRect dirtyRegion;
     for (const auto &item : selectedItems) {
         if (!item->locked()) {
             const QTransform invertedTransform{item->transformObj().inverted()};
-            const QPointF localCurPos{invertedTransform.map(worldCurPos)};
-            const QPointF localLastPos{invertedTransform.map(worldLastPos)};
-            const QPointF localDelta{localCurPos - localLastPos};
+            const QPointF localDelta{invertedTransform.map(m_snapAnchor + stepDelta) - invertedTransform.map(m_snapAnchor)};
 
             spatialContext->quadtree().deleteItem(item, false);
             dirtyRegion |= transformer.worldToGrid(item->boundingBox()).toRect();
@@ -122,7 +136,7 @@ TransformHandler::State MoveTransformHandler::mouseMoved(ApplicationContext *con
 
     renderingContext->cacheGrid().markDirty(dirtyRegion);
 
-    m_lastPos = curPos;
+    m_appliedDelta = totalDelta;
     renderingContext->markForRender();
     renderingContext->markForUpdate();
 
@@ -140,8 +154,9 @@ TransformHandler::State MoveTransformHandler::mouseReleased(ApplicationContext *
 
     const QPointF curPos{context->uiContext()->appEvent()->pos()};
     const QPointF worldOriginalPos{transformer.viewToWorld(m_initialPos)};
-    const QPointF worldFinalPos{transformer.viewToWorld(curPos)};
-    const QPointF delta{worldFinalPos - worldOriginalPos};
+    // with snapping the items may have moved by a different amount than the cursor
+    const QPointF worldFinalPos{worldOriginalPos + m_appliedDelta};
+    const bool cursorMoved{curPos != m_initialPos};
 
     if (!m_isActive) {
         return TransformHandler::State::Unlocked;
@@ -149,7 +164,12 @@ TransformHandler::State MoveTransformHandler::mouseReleased(ApplicationContext *
 
     m_isActive = false;
 
-    if (delta != QPointF{0, 0}) {
+    if (cursorMoved) {
+        if (m_appliedDelta.isNull()) {
+            // a drag that snapped back to where it started changes nothing
+            return TransformHandler::State::Unlocked;
+        }
+
         auto &selectedItems{context->selectionContext()->selectedItems()};
         QList<std::shared_ptr<Item>> items{selectedItems.begin(), selectedItems.end()};
 

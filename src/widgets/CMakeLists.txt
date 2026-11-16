@@ -41,6 +41,8 @@ target_sources(
         command/updatepropertycommand.hpp
         command/alignitemcommand.hpp
         command/alignitemcommand.cpp
+        command/arrangeitemcommand.hpp
+        command/arrangeitemcommand.cpp
         command/lockcommand.hpp
         command/lockcommand.cpp
         command/zordercommand.hpp
@@ -237,6 +239,8 @@ target_sources(
         dialog/input/freehandsettingswidget.cpp
         dialog/input/selectionsettingswidget.hpp
         dialog/input/selectionsettingswidget.cpp
+        dialog/grid/configuregridwidget.hpp
+        dialog/grid/configuregridwidget.cpp
         iconmanager/iconmanager.hpp
         iconmanager/iconmanager.cpp
         mime/drawymimehandler.cpp
@@ -258,6 +262,8 @@ target_sources(
         libdrawywidgets_private_export.h
         common/renderitems.cpp
         common/renderitems.hpp
+        common/grid.cpp
+        common/grid.hpp
         customelementswidget/customelementswidget.hpp
         customelementswidget/customelementswidget.cpp
         customelementswidget/customelementslistview.hpp

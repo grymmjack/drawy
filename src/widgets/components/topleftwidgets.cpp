@@ -53,6 +53,9 @@ TopLeftWidgets::TopLeftWidgets(ActionManager *actionManager, QWidget *parent)
         menu->addSeparator();
         menu->addAction(actionManager->action(ActionManager::Action::Clear));
         menu->addSeparator();
+        menu->addAction(actionManager->action(ActionManager::Action::ShowGrid));
+        menu->addAction(actionManager->action(ActionManager::Action::SnapToGrid));
+        menu->addSeparator();
         menu->addAction(mColorSchemeMenu);
         menu->addAction(actionManager->action(KStandardActions::KeyBindings));
         menu->addAction(actionManager->action(KStandardActions::Preferences));

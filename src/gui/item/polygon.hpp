@@ -26,6 +26,8 @@ public:
     [[nodiscard]] const QPointF &start() const;
     [[nodiscard]] const QPointF &end() const;
 
+    [[nodiscard]] QRectF normalizedGeometryBox() const override;
+
     [[nodiscard]] QJsonObject serialize(int zorder) const override;
     void deserialize(const QJsonObject &obj) override;
 

@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include "command/arrangeitemcommand.hpp"
 #include "config-drawy.hpp"
 #include "item/itemutils.hpp"
 #include "jobs/loadjob.hpp"
@@ -52,6 +53,11 @@ public:
         AlignLeft,
         AlignHorizontalCenter,
         AlignRight,
+        DistributeHorizontally,
+        DistributeVertically,
+        SnapSelectionToGrid,
+        ShowGrid,
+        SnapToGrid,
         Debug,
         WhatsNew,
         LockItems,
@@ -84,6 +90,9 @@ public:
     void activatePage(int index);
     void deletePage(int index);
 
+    // changes the grid spacing (in canvas units) and redraws the grid
+    void setGridSize(int size);
+
 private:
     void zoomIn();
     void zoomOut();
@@ -106,6 +115,10 @@ private:
 
     void switchToTool(Tool::Type type);
     void alignItems(ItemUtils::AlignType alignType);
+    void arrangeItems(ArrangeItemCommand::Arrangement arrangement);
+    void setShowGrid(bool show);
+    void setSnapToGrid(bool snap);
+    void slotUpdateGridActions();
 
     void clear();
 

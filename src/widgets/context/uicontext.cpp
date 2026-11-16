@@ -289,8 +289,15 @@ void UIContext::showContextMenu() const
             alignmentMenu->addAction(actionManager()->action(ActionManager::Action::AlignHorizontalCenter));
             alignmentMenu->addAction(actionManager()->action(ActionManager::Action::AlignRight));
 
+            if (selectedItems.size() >= 3) {
+                alignmentMenu->addSeparator();
+                alignmentMenu->addAction(actionManager()->action(ActionManager::Action::DistributeHorizontally));
+                alignmentMenu->addAction(actionManager()->action(ActionManager::Action::DistributeVertically));
+            }
+
             menu->addMenu(alignmentMenu);
         }
+        menu->addAction(actionManager()->action(ActionManager::Action::SnapSelectionToGrid));
         menu->addSeparator();
         menu->addAction(actionManager()->action(ActionManager::Action::ExportSelectedElementsAsImage));
     }
@@ -308,6 +315,8 @@ void UIContext::showContextMenu() const
 
     menu->addSeparator();
 
+    menu->addAction(actionManager()->action(ActionManager::Action::ShowGrid));
+    menu->addAction(actionManager()->action(ActionManager::Action::SnapToGrid));
     menu->addAction(actionManager()->action(KStandardActions::FullScreen));
 
     menu->addSeparator();

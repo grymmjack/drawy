@@ -44,6 +44,15 @@ void AlignmentWidgetTest::shouldHaveDefaultValues()
 
     auto alignBottomButton = m_widget->findChild<ButtonActionsWidget *>(u"alignBottomButton"_s);
     QVERIFY(alignBottomButton);
+
+    auto distributeHorizontallyButton = m_widget->findChild<ButtonActionsWidget *>(u"distributeHorizontallyButton"_s);
+    QVERIFY(distributeHorizontallyButton);
+
+    auto distributeVerticallyButton = m_widget->findChild<ButtonActionsWidget *>(u"distributeVerticallyButton"_s);
+    QVERIFY(distributeVerticallyButton);
+
+    auto snapToGridButton = m_widget->findChild<ButtonActionsWidget *>(u"snapToGridButton"_s);
+    QVERIFY(snapToGridButton);
 }
 
 #include "moc_alignmentwidgettest.cpp"

@@ -7,6 +7,8 @@
 #include "command/commandhistory.hpp"
 #include "command/resizeitemcommand.hpp"
 #include "common/constants.hpp"
+#include "common/grid.hpp"
+#include "common/utils/snap.hpp"
 #include "context/applicationcontext.hpp"
 #include "context/coordinatetransformer.hpp"
 #include "context/renderingcontext.hpp"
@@ -62,8 +64,34 @@ TransformHandler::State ResizeTransformHandler::mousePressed(ApplicationContext 
     if (context->uiContext()->appEvent()->button() == Qt::LeftButton) {
         const auto [selectionBox, selectionBoxTransform]{context->selectionContext()->selectionBoxWithTransform()};
 
+        // The handle is normally picked while hovering, but an item that was not
+        // selected yet can be pressed and dragged straight away without any hover
+        // over its handles, so pick it again from the press position.
+        const auto pressedHandle{handleAt(context, selectionBox, selectionBoxTransform)};
+        if (pressedHandle.has_value()) {
+            m_activeHandleType = *pressedHandle;
+        }
+
         m_initialSelectionBox = selectionBox;
         m_initialSelectionTransform = selectionBoxTransform;
+
+        const QTransform invTransform{selectionBoxTransform.inverted()};
+        m_localPressPos = invTransform.map(context->spatialContext()->coordinateTransformer().viewToWorld(context->uiContext()->appEvent()->pos()));
+
+        m_initialGeometryBox = {};
+        const bool axisAligned{qFuzzyIsNull(selectionBoxTransform.m12()) && qFuzzyIsNull(selectionBoxTransform.m21())};
+        if (axisAligned) {
+            QRectF worldGeometry;
+            for (const auto &item : context->selectionContext()->selectedItems()) {
+                worldGeometry |= item->geometryBoundingBox();
+            }
+
+            const QRectF localGeometry{invTransform.mapRect(worldGeometry).normalized()};
+            // a zero sized side cannot be scaled to a target size
+            if (localGeometry.width() > 0 && localGeometry.height() > 0) {
+                m_initialGeometryBox = localGeometry;
+            }
+        }
         m_lastTransformUpdate = {};
         m_lastLockedTransformUpdate = {};
         m_aspectRatioLocked.clear();
@@ -81,16 +109,9 @@ TransformHandler::State ResizeTransformHandler::mouseMoved(ApplicationContext *c
     const auto [selectionBox, selectionBoxTransform]{context->selectionContext()->selectionBoxWithTransform()};
 
     if (!m_isActive) {
-        const auto worldPos{transformer.viewToWorld(uiContext->appEvent()->pos())};
-        const auto relativeCurPos{selectionBoxTransform.inverted().map(worldPos)};
-
-        const auto handles{getHandles(selectionBox, context->renderingContext()->zoomFactor())};
-        auto it{std::ranges::find_if(handles, [&relativeCurPos](const auto &handle) {
-            return handle.rect.contains(relativeCurPos);
-        })};
-
-        if (it != handles.end()) {
-            m_activeHandleType = it->type;
+        const auto hoveredHandle{handleAt(context, selectionBox, selectionBoxTransform)};
+        if (hoveredHandle.has_value()) {
+            m_activeHandleType = *hoveredHandle;
         }
     }
 
@@ -106,8 +127,21 @@ TransformHandler::State ResizeTransformHandler::mouseMoved(ApplicationContext *c
         auto &selectedItems{context->selectionContext()->selectedItems()};
         auto &quadtree{context->spatialContext()->quadtree()};
 
-        const QPointF localCurPos{invTransform.map(transformer.viewToWorld(uiContext->appEvent()->pos()))};
-        const auto [newWidth, newHeight, centerOfScale]{[this, prevRect = m_initialSelectionBox, localCurPos] {
+        QPointF localCurPos{invTransform.map(transformer.viewToWorld(uiContext->appEvent()->pos()))};
+
+        // When snapping, measure the resize against the geometry box instead of the
+        // padded selection box: the dragged geometry corner follows the cursor and is
+        // snapped to the grid, and scaling happens about the opposite geometry corner,
+        // so both the moving and the fixed outline edges end up on grid lines.
+        const bool snapping{Common::Grid::isSnapActive(context) && !m_initialGeometryBox.isEmpty()};
+        const QRectF referenceBox{snapping ? m_initialGeometryBox : m_initialSelectionBox};
+        if (snapping) {
+            const QPointF draggedGeometryPoint{draggedPoint(m_initialGeometryBox) + (localCurPos - m_localPressPos)};
+            const QPointF snappedWorld{Common::Utils::Snap::snapPoint(m_initialSelectionTransform.map(draggedGeometryPoint), Common::Grid::size())};
+            localCurPos = invTransform.map(snappedWorld);
+        }
+
+        const auto [newWidth, newHeight, centerOfScale]{[this, prevRect = referenceBox, localCurPos] {
             switch (m_activeHandleType) {
             case ResizeHandleType::TopRight:
                 return topRightHandler(prevRect, localCurPos);
@@ -129,15 +163,15 @@ TransformHandler::State ResizeTransformHandler::mouseMoved(ApplicationContext *c
             return std::make_tuple(1.0, 1.0, QPointF{0, 0});
         }()};
 
-        qreal scaleX{newWidth / m_initialSelectionBox.width()};
-        qreal scaleY{newHeight / m_initialSelectionBox.height()};
+        qreal scaleX{newWidth / referenceBox.width()};
+        qreal scaleY{newHeight / referenceBox.height()};
 
         const bool textWrap{selectedItems.size() == 1 && (*selectedItems.begin())->formType() == Item::FormType::Text
                             && (m_activeHandleType == ResizeHandleType::Left || m_activeHandleType == ResizeHandleType::Right)};
 
         if (textWrap) {
             const auto *textItem = static_cast<TextItem *>(selectedItems.begin()->get());
-            scaleX = std::max(scaleX, textItem->minWrapWidth() / m_initialSelectionBox.width());
+            scaleX = std::max(scaleX, textItem->minWrapWidth() / referenceBox.width());
             scaleY = 1.0;
         }
 
@@ -275,6 +309,46 @@ std::tuple<qreal, qreal, QPointF> ResizeTransformHandler::topLeftHandler(const Q
 std::tuple<qreal, qreal, QPointF> ResizeTransformHandler::topHandler(const QRectF prevRect, const QPointF localCurPos)
 {
     return {prevRect.width(), prevRect.bottomRight().y() - localCurPos.y(), QPointF{prevRect.center().x(), prevRect.bottom()}};
+}
+
+std::optional<ResizeTransformHandler::ResizeHandleType>
+ResizeTransformHandler::handleAt(ApplicationContext *context, const QRectF selectionBox, const QTransform &selectionBoxTransform)
+{
+    const auto worldPos{context->spatialContext()->coordinateTransformer().viewToWorld(context->uiContext()->appEvent()->pos())};
+    const auto relativeCurPos{selectionBoxTransform.inverted().map(worldPos)};
+
+    const auto handles{getHandles(selectionBox, context->renderingContext()->zoomFactor())};
+    const auto it{std::ranges::find_if(handles, [&relativeCurPos](const auto &handle) {
+        return handle.rect.contains(relativeCurPos);
+    })};
+
+    if (it == handles.end()) {
+        return std::nullopt;
+    }
+    return it->type;
+}
+
+QPointF ResizeTransformHandler::draggedPoint(const QRectF rect) const
+{
+    switch (m_activeHandleType) {
+    case ResizeHandleType::TopRight:
+        return rect.topRight();
+    case ResizeHandleType::Right:
+        return QPointF{rect.right(), rect.center().y()};
+    case ResizeHandleType::BottomRight:
+        return rect.bottomRight();
+    case ResizeHandleType::Bottom:
+        return QPointF{rect.center().x(), rect.bottom()};
+    case ResizeHandleType::BottomLeft:
+        return rect.bottomLeft();
+    case ResizeHandleType::Left:
+        return QPointF{rect.left(), rect.center().y()};
+    case ResizeHandleType::TopLeft:
+        return rect.topLeft();
+    case ResizeHandleType::Top:
+        return QPointF{rect.center().x(), rect.top()};
+    }
+    return rect.bottomRight();
 }
 
 QList<ResizeTransformHandler::ResizeHandle> ResizeTransformHandler::getHandles(const QRectF selectionBox, const qreal zoom)

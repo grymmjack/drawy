@@ -9,6 +9,7 @@
 #include <utility>
 
 #include "canvas/canvas.hpp"
+#include "common/grid.hpp"
 #include "context/applicationcontext.hpp"
 #include "context/coordinatetransformer.hpp"
 #include "context/renderingcontext.hpp"
@@ -27,6 +28,7 @@ void Common::renderCanvas(ApplicationContext *context)
 
     const QPointF offsetPos{spatial.offsetPos()};
     canvas->setCanvasBg(canvas->canvasBg());
+    Common::Grid::render(context);
 
     const QPointF gridOffset{transformer.worldToGrid(offsetPos)};
     const QRectF gridViewport{gridOffset, transformer.viewToGrid(canvas->dimensions())};

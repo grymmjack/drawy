@@ -31,8 +31,10 @@
 #include "command/ungroupcommand.hpp"
 #include "command/zordercommand.hpp"
 #include "common/constants.hpp"
+#include "common/grid.hpp"
 #include "customelements/customelementsmanager.hpp"
 #include "dialog/configuresettingsdialog.hpp"
+#include "drawyglobalconfig.h"
 #include "event/event.hpp"
 #include "jobs/serializejob.hpp"
 #include "keybindmanager.hpp"
@@ -155,6 +157,33 @@ ActionManager::ActionManager(KActionCollection *actionCollection, ApplicationCon
     createAction(Action::AlignRight, i18nc("@action", "Align Right"), {}, this, [this]() {
         alignItems(ItemUtils::AlignType::AlignRight);
     })->setIcon(QIcon::fromTheme(u"align-horizontal-right"_s));
+
+    createAction(Action::DistributeHorizontally, i18nc("@action", "Distribute Horizontally"), {}, this, [this]() {
+        arrangeItems(ArrangeItemCommand::Arrangement::DistributeHorizontally);
+    })->setIcon(QIcon::fromTheme(u"distribute-horizontal-gaps"_s));
+    createAction(Action::DistributeVertically, i18nc("@action", "Distribute Vertically"), {}, this, [this]() {
+        arrangeItems(ArrangeItemCommand::Arrangement::DistributeVertically);
+    })->setIcon(QIcon::fromTheme(u"distribute-vertical-gaps"_s));
+    createAction(Action::SnapSelectionToGrid, i18nc("@action", "Snap Selection to Grid"), {}, this, [this]() {
+        arrangeItems(ArrangeItemCommand::Arrangement::SnapToGrid);
+    })->setIcon(QIcon::fromTheme(u"snap-bounding-box-corners"_s));
+
+    auto showGridAction{
+        createAction(Action::ShowGrid, i18nc("@action", "Show Grid"), {QKeySequence(QKeyCombination(Qt::CTRL, Qt::Key_Apostrophe))}, this, [this]() {
+            setShowGrid(action(Action::ShowGrid)->isChecked());
+        })};
+    showGridAction->setIcon(QIcon::fromTheme(u"show-grid"_s));
+    showGridAction->setCheckable(true);
+
+    auto snapToGridAction{
+        createAction(Action::SnapToGrid, i18nc("@action", "Snap to Grid"), {QKeySequence(QKeyCombination(Qt::CTRL, Qt::Key_Semicolon))}, this, [this]() {
+            setSnapToGrid(action(Action::SnapToGrid)->isChecked());
+        })};
+    snapToGridAction->setIcon(QIcon::fromTheme(u"snap-grid-guide-intersections"_s));
+    snapToGridAction->setCheckable(true);
+    snapToGridAction->setToolTip(i18nc("@info:tooltip", "Snap to Grid (hold Ctrl while dragging to invert)"));
+
+    slotUpdateGridActions();
 
     createAction(Action::LockItems, i18nc("@action", "Lock"), {}, this, &ActionManager::slotLock)->setIcon(QIcon::fromTheme(u"lock"_s));
 
@@ -281,6 +310,16 @@ QString ActionManager::actionName(Action type) const
         return u"align_horizontal_center"_s;
     case Action::AlignRight:
         return u"align_right"_s;
+    case Action::DistributeHorizontally:
+        return u"distribute_horizontally"_s;
+    case Action::DistributeVertically:
+        return u"distribute_vertically"_s;
+    case Action::SnapSelectionToGrid:
+        return u"snap_selection_to_grid"_s;
+    case Action::ShowGrid:
+        return u"show_grid"_s;
+    case Action::SnapToGrid:
+        return u"snap_to_grid"_s;
     case Action::Debug:
         return u"debug"_s;
     case Action::SwitchToDiamondTool:
@@ -488,6 +527,60 @@ void ActionManager::alignItems(ItemUtils::AlignType alignType)
         m_context->renderingContext()->markForRender();
         m_context->renderingContext()->markForUpdate();
     }
+}
+
+void ActionManager::arrangeItems(ArrangeItemCommand::Arrangement arrangement)
+{
+    const auto &selectedItems{m_context->selectionContext()->selectedItems()};
+    QList<std::shared_ptr<Item>> items;
+    for (const auto &item : selectedItems) {
+        if (!item->locked()) {
+            items.append(item);
+        }
+    }
+
+    if (items.isEmpty()) {
+        return;
+    }
+
+    auto command{std::make_shared<ArrangeItemCommand>(std::move(items), arrangement, Common::Grid::size())};
+    if (command->hasChanged()) {
+        m_context->spatialContext()->commandHistory()->push(command);
+        m_context->renderingContext()->markForRender();
+        m_context->renderingContext()->markForUpdate();
+    }
+}
+
+void ActionManager::setShowGrid(bool show)
+{
+    DrawyGlobalConfig::self()->setShowGrid(show);
+    DrawyGlobalConfig::self()->save();
+    m_context->renderingContext()->markForRender();
+    m_context->renderingContext()->markForUpdate();
+}
+
+void ActionManager::setSnapToGrid(bool snap)
+{
+    DrawyGlobalConfig::self()->setSnapToGrid(snap);
+    DrawyGlobalConfig::self()->save();
+}
+
+void ActionManager::setGridSize(int size)
+{
+    if (size == DrawyGlobalConfig::self()->gridSize()) {
+        return;
+    }
+
+    DrawyGlobalConfig::self()->setGridSize(size);
+    DrawyGlobalConfig::self()->save();
+    m_context->renderingContext()->markForRender();
+    m_context->renderingContext()->markForUpdate();
+}
+
+void ActionManager::slotUpdateGridActions()
+{
+    action(Action::ShowGrid)->setChecked(DrawyGlobalConfig::self()->showGrid());
+    action(Action::SnapToGrid)->setChecked(DrawyGlobalConfig::self()->snapToGrid());
 }
 
 void ActionManager::switchToMoveTool()
@@ -879,6 +972,11 @@ void ActionManager::configureSettings()
 {
     ConfigureSettingsDialog dlg(m_context->parentWidget());
     dlg.exec();
+
+    // grid settings may have changed
+    slotUpdateGridActions();
+    m_context->renderingContext()->markForRender();
+    m_context->renderingContext()->markForUpdate();
 }
 
 void ActionManager::slotUpdateZoomButtons()
@@ -959,6 +1057,12 @@ void ActionManager::slotUpdateZorderAndGroupButtons()
     }
 
     action(Action::GroupItems)->setEnabled(selectedItems.size() > 1);
+
+    // distributing needs items in between the two outer ones
+    constexpr std::size_t minItemsToDistribute{3};
+    action(Action::DistributeHorizontally)->setEnabled(selectedItems.size() >= minItemsToDistribute);
+    action(Action::DistributeVertically)->setEnabled(selectedItems.size() >= minItemsToDistribute);
+    action(Action::SnapSelectionToGrid)->setEnabled(!selectedItems.empty());
     action(Action::UngroupItems)->setEnabled(atLeastOneGroup);
 }
 
