@@ -8,6 +8,7 @@
 #include "config-drawy.hpp"
 #include "item/itemutils.hpp"
 #include "jobs/loadjob.hpp"
+#include "properties/property.hpp"
 #include "tools/tool.hpp"
 #include <KStandardAction>
 #include <KStandardActions>
@@ -67,6 +68,8 @@ public:
         DeletePage,
         NextPage,
         PreviousPage,
+        CopyStyle,
+        PasteStyle,
     };
 
     Q_ENUM(Action)
@@ -79,6 +82,9 @@ public:
     [[nodiscard]] QString actionName(KStandardActions::StandardAction standardAction) const;
     [[nodiscard]] QAction *action(KStandardAction::StandardAction standardAction) const;
     [[nodiscard]] QString actionName(KStandardAction::StandardAction standardAction) const;
+
+    // true once a style has been copied, so Paste Style has something to apply
+    [[nodiscard]] bool hasCopiedStyle() const;
 
     [[nodiscard]] bool confirmSaveAfterModification(); // to confirm if you want to save the file quitting/opening a new file
 
@@ -99,8 +105,11 @@ private:
     void zoomReset();
     void undo();
     void redo();
+    void cut();
     void copy();
     void paste();
+    void copyStyle();
+    void pasteStyle();
     void switchToMoveTool();
     void selectAll();
     void deleteSelection();
@@ -175,4 +184,9 @@ private:
     ApplicationContext *const m_context;
     KActionCollection *const m_actionCollection;
     KRecentFilesAction *const m_recentFiles;
+
+    // the style properties taken by Copy Style; kept in the application rather
+    // than on the system clipboard so copying a style does not replace what the
+    // user has copied
+    QList<Property> m_copiedStyle;
 };

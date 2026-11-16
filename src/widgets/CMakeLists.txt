@@ -43,6 +43,8 @@ target_sources(
         command/alignitemcommand.cpp
         command/arrangeitemcommand.hpp
         command/arrangeitemcommand.cpp
+        command/pastestylecommand.cpp
+        command/pastestylecommand.hpp
         command/lockcommand.hpp
         command/lockcommand.cpp
         command/zordercommand.hpp
