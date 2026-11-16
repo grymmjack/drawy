@@ -62,6 +62,14 @@ TransformHandler::State ResizeTransformHandler::mousePressed(ApplicationContext 
     if (context->uiContext()->appEvent()->button() == Qt::LeftButton) {
         const auto [selectionBox, selectionBoxTransform]{context->selectionContext()->selectionBoxWithTransform()};
 
+        // The handle is normally picked while hovering, but an item that was not
+        // selected yet can be pressed and dragged straight away without any hover
+        // over its handles, so pick it again from the press position.
+        const auto pressedHandle{handleAt(context, selectionBox, selectionBoxTransform)};
+        if (pressedHandle.has_value()) {
+            m_activeHandleType = *pressedHandle;
+        }
+
         m_initialSelectionBox = selectionBox;
         m_initialSelectionTransform = selectionBoxTransform;
         m_lastTransformUpdate = {};
@@ -81,16 +89,9 @@ TransformHandler::State ResizeTransformHandler::mouseMoved(ApplicationContext *c
     const auto [selectionBox, selectionBoxTransform]{context->selectionContext()->selectionBoxWithTransform()};
 
     if (!m_isActive) {
-        const auto worldPos{transformer.viewToWorld(uiContext->appEvent()->pos())};
-        const auto relativeCurPos{selectionBoxTransform.inverted().map(worldPos)};
-
-        const auto handles{getHandles(selectionBox, context->renderingContext()->zoomFactor())};
-        auto it{std::ranges::find_if(handles, [&relativeCurPos](const auto &handle) {
-            return handle.rect.contains(relativeCurPos);
-        })};
-
-        if (it != handles.end()) {
-            m_activeHandleType = it->type;
+        const auto hoveredHandle{handleAt(context, selectionBox, selectionBoxTransform)};
+        if (hoveredHandle.has_value()) {
+            m_activeHandleType = *hoveredHandle;
         }
     }
 
@@ -275,6 +276,23 @@ std::tuple<qreal, qreal, QPointF> ResizeTransformHandler::topLeftHandler(const Q
 std::tuple<qreal, qreal, QPointF> ResizeTransformHandler::topHandler(const QRectF prevRect, const QPointF localCurPos)
 {
     return {prevRect.width(), prevRect.bottomRight().y() - localCurPos.y(), QPointF{prevRect.center().x(), prevRect.bottom()}};
+}
+
+std::optional<ResizeTransformHandler::ResizeHandleType>
+ResizeTransformHandler::handleAt(ApplicationContext *context, const QRectF selectionBox, const QTransform &selectionBoxTransform)
+{
+    const auto worldPos{context->spatialContext()->coordinateTransformer().viewToWorld(context->uiContext()->appEvent()->pos())};
+    const auto relativeCurPos{selectionBoxTransform.inverted().map(worldPos)};
+
+    const auto handles{getHandles(selectionBox, context->renderingContext()->zoomFactor())};
+    const auto it{std::ranges::find_if(handles, [&relativeCurPos](const auto &handle) {
+        return handle.rect.contains(relativeCurPos);
+    })};
+
+    if (it == handles.end()) {
+        return std::nullopt;
+    }
+    return it->type;
 }
 
 QList<ResizeTransformHandler::ResizeHandle> ResizeTransformHandler::getHandles(const QRectF selectionBox, const qreal zoom)

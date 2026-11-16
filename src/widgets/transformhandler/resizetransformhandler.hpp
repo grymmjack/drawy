@@ -6,6 +6,7 @@
 
 #include "transformhandler.hpp"
 #include <QTransform>
+#include <optional>
 
 class Item;
 
@@ -51,6 +52,10 @@ private:
     [[nodiscard]] std::tuple<qreal, qreal, QPointF> leftHandler(const QRectF prevRect, const QPointF localCurPos);
     [[nodiscard]] std::tuple<qreal, qreal, QPointF> topLeftHandler(const QRectF prevRect, const QPointF localCurPos);
     [[nodiscard]] std::tuple<qreal, qreal, QPointF> topHandler(const QRectF prevRect, const QPointF localCurPos);
+
+    // the handle under the cursor, if any
+    [[nodiscard]] static std::optional<ResizeHandleType>
+    handleAt(ApplicationContext *context, const QRectF selectionBox, const QTransform &selectionBoxTransform);
 
 private:
     QPointF m_viewLastPoint{};
