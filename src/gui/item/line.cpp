@@ -92,6 +92,11 @@ const QPointF &LineItem::end() const
     return m_end;
 }
 
+QRectF LineItem::normalizedGeometryBox() const
+{
+    return QRectF{m_start, m_end}.normalized();
+}
+
 void LineItem::updateBoundingBox()
 {
     const double minX{std::min(m_start.x(), m_end.x())};

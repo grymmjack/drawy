@@ -33,6 +33,7 @@ public:
 
     [[nodiscard]] QRectF boundingBox() const override;
     [[nodiscard]] QRectF normalizedBoundingBox() const override;
+    [[nodiscard]] QRectF normalizedGeometryBox() const override;
     [[nodiscard]] QPolygonF displayBoundingBox() const override;
 
     [[nodiscard]] Item::FormType formType() const override;

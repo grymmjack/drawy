@@ -105,6 +105,17 @@ QRectF GroupItem::normalizedBoundingBox() const
     return result;
 }
 
+QRectF GroupItem::normalizedGeometryBox() const
+{
+    QRectF result;
+
+    for (const auto &item : m_items) {
+        result |= item->geometryBoundingBox();
+    }
+
+    return result;
+}
+
 QPolygonF GroupItem::displayBoundingBox() const
 {
     return m_transform.map(normalizedBoundingBox());

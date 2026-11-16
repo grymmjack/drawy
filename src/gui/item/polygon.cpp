@@ -59,6 +59,11 @@ const QPointF &PolygonItem::end() const
     return m_end;
 }
 
+QRectF PolygonItem::normalizedGeometryBox() const
+{
+    return QRectF{m_start, m_end}.normalized();
+}
+
 QJsonObject PolygonItem::serialize(int zorder) const
 {
     const PolygonSerializer serialize(this);

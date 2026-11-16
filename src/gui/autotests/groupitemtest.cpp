@@ -197,6 +197,9 @@ void GroupItemTest::shouldTestBoundingBox()
     QCOMPARE(i.boundingBox(), QRectF(9, 9, 32, 32));
     QCOMPARE(i.normalizedBoundingBox(), QRectF(0, 0, 32, 32));
     QCOMPARE(i.displayBoundingBox(), QPolygonF(QRectF(9, 9, 32, 32)));
+
+    // the geometry box excludes the stroke padding of the children
+    QCOMPARE(i.geometryBoundingBox(), QRectF(10, 10, 30, 30));
 }
 
 void GroupItemTest::shouldTestProperties()

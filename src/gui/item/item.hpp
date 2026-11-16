@@ -28,6 +28,13 @@ public:
     [[nodiscard]] virtual QRectF normalizedBoundingBox() const;
     [[nodiscard]] virtual QPolygonF displayBoundingBox() const; // could be rotated as well
 
+    // Bounds of the item's shape without any stroke padding, in item (untransformed)
+    // coordinates. Grid snapping uses this so that a shape's outline, rather than its
+    // padded hit box, lands on the grid.
+    [[nodiscard]] virtual QRectF normalizedGeometryBox() const;
+    // normalizedGeometryBox() mapped to world coordinates
+    [[nodiscard]] QRectF geometryBoundingBox() const;
+
     [[nodiscard]] virtual Property property(const Property::Type propertyType) const;
     virtual void setProperty(const Property::Type propertyType, Property newObj);
     virtual QList<Property> properties() const;
