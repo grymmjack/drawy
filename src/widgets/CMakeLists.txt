@@ -45,6 +45,10 @@ target_sources(
         command/arrangeitemcommand.cpp
         command/pastestylecommand.cpp
         command/pastestylecommand.hpp
+        command/replaceitemscommand.cpp
+        command/replaceitemscommand.hpp
+        handwriting/handwritingrecognition.cpp
+        handwriting/handwritingrecognition.hpp
         command/lockcommand.hpp
         command/lockcommand.cpp
         command/zordercommand.hpp
@@ -312,6 +316,20 @@ endif()
 
 if(TARGET KF6::TextAddonsWidgets)
     target_link_libraries(libdrawywidgets PUBLIC KF6::TextAddonsWidgets)
+endif()
+
+if(HAVE_ONNXRUNTIME)
+    target_sources(
+        libdrawywidgets
+        PRIVATE
+            handwriting/handwritingmodeldownload.cpp
+            handwriting/handwritingmodeldownload.hpp
+    )
+    if(TARGET onnxruntime::onnxruntime)
+        target_link_libraries(libdrawywidgets PRIVATE onnxruntime::onnxruntime Qt::Network)
+    else()
+        target_link_libraries(libdrawywidgets PRIVATE PkgConfig::ONNXRUNTIME Qt::Network)
+    endif()
 endif()
 
 # precompiled headers support

@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #pragma once
+#include "libdrawywidgets_private_export.h"
 #include <QList>
 #include <QObject>
 #include <QPointF>
@@ -12,7 +13,7 @@ class ApplicationContext;
 class CommandHistory;
 class Page;
 
-class SpatialContext : public QObject
+class LIBDRAWYWIDGETS_TESTS_EXPORT SpatialContext : public QObject
 {
     Q_OBJECT
 public:

@@ -6,6 +6,7 @@
 
 #include "command/arrangeitemcommand.hpp"
 #include "config-drawy.hpp"
+#include "handwriting/handwritingrecognition.hpp"
 #include "item/itemutils.hpp"
 #include "jobs/loadjob.hpp"
 #include "properties/property.hpp"
@@ -21,6 +22,7 @@
 class KActionCollection;
 
 class ApplicationContext;
+class FreeformItem;
 class ActionManager : public QObject
 {
     Q_OBJECT
@@ -70,6 +72,7 @@ public:
         PreviousPage,
         CopyStyle,
         PasteStyle,
+        ConvertHandwritingToText,
     };
 
     Q_ENUM(Action)
@@ -110,6 +113,10 @@ private:
     void paste();
     void copyStyle();
     void pasteStyle();
+    void convertHandwritingToText();
+    void downloadHandwritingModel();
+    void
+    replaceHandwriting(const QList<std::shared_ptr<FreeformItem>> &strokes, const QRectF &worldBounds, const HandwritingRecognition::Recognition &recognition);
     void switchToMoveTool();
     void selectAll();
     void deleteSelection();
@@ -189,4 +196,7 @@ private:
     // than on the system clipboard so copying a style does not replace what the
     // user has copied
     QList<Property> m_copiedStyle;
+
+    // a handwriting recognition is running; only one at a time
+    bool m_recognizingHandwriting{false};
 };
