@@ -55,4 +55,30 @@ void PropertyTest::shouldConvertEnumToString()
     QCOMPARE(Property::convertEnumToString(Property::Type::StrokeStyle), u"StrokeStyle"_s);
 }
 
+void PropertyTest::shouldClassifyStyleProperties()
+{
+    // how an item looks
+    QVERIFY(Property::isStyleProperty(Property::Type::StrokeColor));
+    QVERIFY(Property::isStyleProperty(Property::Type::StrokeWidth));
+    QVERIFY(Property::isStyleProperty(Property::Type::StrokeStyle));
+    QVERIFY(Property::isStyleProperty(Property::Type::BackgroundColor));
+    QVERIFY(Property::isStyleProperty(Property::Type::BackgroundStyle));
+    QVERIFY(Property::isStyleProperty(Property::Type::Opacity));
+    QVERIFY(Property::isStyleProperty(Property::Type::FontFamily));
+    QVERIFY(Property::isStyleProperty(Property::Type::FontSize));
+    QVERIFY(Property::isStyleProperty(Property::Type::FontStyle));
+    QVERIFY(Property::isStyleProperty(Property::Type::TextAlignment));
+    QVERIFY(Property::isStyleProperty(Property::Type::StartArrowType));
+    QVERIFY(Property::isStyleProperty(Property::Type::EndArrowType));
+    QVERIFY(Property::isStyleProperty(Property::Type::CornerRectangleType));
+
+    // structure, position or tool settings
+    QVERIFY(!Property::isStyleProperty(Property::Type::ZOrder));
+    QVERIFY(!Property::isStyleProperty(Property::Type::Alignment));
+    QVERIFY(!Property::isStyleProperty(Property::Type::Actions));
+    QVERIFY(!Property::isStyleProperty(Property::Type::EraserSize));
+    QVERIFY(!Property::isStyleProperty(Property::Type::ListStyle));
+    QVERIFY(!Property::isStyleProperty(Property::Type::Null));
+}
+
 #include "moc_propertytest.cpp"

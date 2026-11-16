@@ -18,4 +18,5 @@ public:
 private Q_SLOTS:
     void shouldConvertStringToEnum();
     void shouldConvertEnumToString();
+    void shouldClassifyStyleProperties();
 };

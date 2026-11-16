@@ -93,6 +93,38 @@ public:
         return 0;
     }
 
+    // true for the properties that describe how an item looks (colours, stroke,
+    // font, ...), which Copy Style / Paste Style transfer between items; false
+    // for structural ones such as z-order, alignment or list style
+    constexpr static bool isStyleProperty(const Type type)
+    {
+        switch (type) {
+        case Type::StartArrowType:
+        case Type::EndArrowType:
+        case Type::BackgroundColor:
+        case Type::BackgroundStyle:
+        case Type::FontFamily:
+        case Type::FontSize:
+        case Type::FontStyle:
+        case Type::Opacity:
+        case Type::StrokeColor:
+        case Type::StrokeStyle:
+        case Type::StrokeWidth:
+        case Type::TextAlignment:
+        case Type::CornerRectangleType:
+            return true;
+        case Type::Actions:
+        case Type::Alignment:
+        case Type::EraserSize:
+        case Type::Null:
+        case Type::ZOrder:
+        case Type::ListStyle:
+            return false;
+        }
+
+        return false;
+    }
+
     template<typename T>
     Property(const T &value, Type type)
         : m_value(value)
